@@ -4,6 +4,7 @@ function Steady(opts) {
 
 
   this.scrollElement = opts.scrollElement || window;
+  this.scrollEvents = opts.scrollEvents || ['scroll'];
   this.conditions = opts.conditions || {};
   this.handler   = opts.handler;
   this.values    = {};
@@ -47,7 +48,7 @@ Steady.prototype._addBottom = function() {
   this.addTracker('bottom', function(scrollable) {
     var height = Math.max(
       document.body.scrollHeight,
-      document.body.offsetHeight, 
+      document.body.offsetHeight,
       document.documentElement.clientHeight,
       document.documentElement.scrollHeight,
       document.documentElement.offsetHeight
@@ -101,7 +102,7 @@ Steady.prototype._parse = function() {
 
   for ( var condition in this.conditions ) {
     if( !this.conditions.hasOwnProperty(condition) ) continue;
-    
+
     var operator = condition.substr(0, 4);
 
     switch(operator) {
@@ -123,13 +124,13 @@ Steady.prototype._parse = function() {
 
 Steady.prototype._check = function() {
   var results = [];
-  
+
   for( var name in this.values ) {
     if ( this._parsed.hasOwnProperty(name) ) {
       results.push( this._parsed[name] == this.values[name] );
     }
     if ( this._parsedMin.hasOwnProperty(name) ) {
-      results.push( this._parsedMin[name] <= this.values[name] ); 
+      results.push( this._parsedMin[name] <= this.values[name] );
     }
 
     if ( this._parsedMax.hasOwnProperty(name) ) {
@@ -151,7 +152,10 @@ Steady.prototype._done = function() {
 
 Steady.prototype._onScroll = function() {
   this._onScrollHandler = this._throttledHandler();
-  this.scrollElement.addEventListener('scroll', this._onScrollHandler, false);
+
+  for (var i = 0; i < this.scrollEvents.length; i++) {
+    this.scrollElement.addEventListener(this.scrollEvents[i], this._onScrollHandler, false);
+  }
 };
 
 Steady.prototype._throttledHandler = function() {
@@ -159,27 +163,29 @@ Steady.prototype._throttledHandler = function() {
   return this.throttle(function(e) {
 
     if ( !self._wantedTrackers.length || self.processing ) return;
-    
+
     for (var i = 0; i < self._wantedTrackers.length; i++) {
 
       if ( !self.tracked[self._wantedTrackers[i]] ) continue;
 
       self.values[self._wantedTrackers[i]] = self.tracked[self._wantedTrackers[i]].cb(self.scrollElement || window);
     }
-    
+
     window.requestAnimationFrame(self._check.bind(self));
   }, this.throttleVal);
 };
 
 Steady.prototype.stop = function() {
   if ( ! this.stopped  ) {
-    this.scrollElement.removeEventListener('scroll', this._onScrollHandler, false);
+      for (var i = 0; i < this.scrollEvents.length; i++) {
+          this.scrollElement.removeEventListener(this.scrollEvents[i], this._onScrollHandler, false);
+      }
     this.stopped = true;
   }
 };
 
 Steady.prototype.resume = function() {
-  if ( this.stopped  ) 
+  if ( this.stopped  )
     this._onScroll();
     this.stopped = false;
 };
